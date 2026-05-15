@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16
+    container_name: postgres_db
+    environment:
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: appdb
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  app:
+    build: .
+    container_name: node_app
+    env_file:
+      - .env
+    depends_on:
+      - db
+    ports:
+      - "${API_PORT}:${API_PORT}"
+    command: >
+      sh -c "npx wait-port db:5432 && npm run start"
+
+volumes:
+  pgdata:

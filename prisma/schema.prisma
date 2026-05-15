@@ -1,0 +1,149 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  clerkId   String   @unique
+  name      String
+  email     String   @unique
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ownedWorkspaces Workspace[] @relation("WorkspaceOwner")
+  memberships     Member[]
+  assignedIssues  Issue[]     @relation("IssueAssignee")
+  createdIssues   Issue[]     @relation("IssueCreator")
+  comments        Comment[]
+}
+
+model Workspace {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  ownerId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner   User     @relation("WorkspaceOwner", fields: [ownerId], references: [id])
+  members Member[]
+  teams   Team[]
+}
+
+model Member {
+  id          String   @id @default(uuid())
+  userId      String
+  workspaceId String
+  role        Role     @default(MEMBER)
+  createdAt   DateTime @default(now())
+
+  user      User      @relation(fields: [userId], references: [id])
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@unique([userId, workspaceId])
+}
+
+model Team {
+  id          String   @id @default(uuid())
+  name        String
+  identifier  String
+  workspaceId String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  issues    Issue[]
+  cycles    Cycle[]
+}
+
+model Issue {
+  id          String        @id @default(uuid())
+  title       String
+  description String?
+  status      IssueStatus   @default(BACKLOG)
+  priority    IssuePriority @default(NO_PRIORITY)
+  teamId      String
+  assigneeId  String?
+  creatorId   String
+  cycleId     String?
+  position    Float         @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  team     Team         @relation(fields: [teamId], references: [id])
+  assignee User?        @relation("IssueAssignee", fields: [assigneeId], references: [id])
+  creator  User         @relation("IssueCreator", fields: [creatorId], references: [id])
+  cycle    Cycle?       @relation(fields: [cycleId], references: [id])
+  comments Comment[]
+  labels   IssueLabel[]
+}
+
+model Label {
+  id    String @id @default(uuid())
+  name  String
+  color String
+
+  issues IssueLabel[]
+}
+
+model IssueLabel {
+  issueId String
+  labelId String
+
+  issue Issue @relation(fields: [issueId], references: [id])
+  label Label @relation(fields: [labelId], references: [id])
+
+  @@id([issueId, labelId])
+}
+
+model Cycle {
+  id        String   @id @default(uuid())
+  name      String
+  teamId    String
+  startDate DateTime
+  endDate   DateTime
+  createdAt DateTime @default(now())
+
+  team   Team    @relation(fields: [teamId], references: [id])
+  issues Issue[]
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  body      String
+  issueId   String
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  issue  Issue @relation(fields: [issueId], references: [id])
+  author User  @relation(fields: [authorId], references: [id])
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum IssueStatus {
+  BACKLOG
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  DONE
+  CANCELLED
+}
+
+enum IssuePriority {
+  NO_PRIORITY
+  URGENT
+  HIGH
+  MEDIUM
+  LOW
+}
